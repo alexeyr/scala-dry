@@ -25,10 +25,19 @@ scalacOptions ++= Seq(
 
 resolvers += Resolver.sonatypeRepo("releases")
 
+val paradiseVersion = "2.1.0"
+
 libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-reflect" % scalaVersion.value,
   "com.lihaoyi" %% "utest" % "0.4.3" % "test",
   "org.typelevel" %% "macro-compat" % "1.1.1",
-  compilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full))
+  compilerPlugin("org.scalamacros" % "paradise" % paradiseVersion cross CrossVersion.full))
+
+libraryDependencies ++= {
+  if (scalaBinaryVersion.value == "2.10")
+    Seq("org.scalamacros" %% "quasiquotes" % paradiseVersion cross CrossVersion.binary)
+  else
+    Nil
+}
 
 testFrameworks += new TestFramework("utest.runner.Framework")

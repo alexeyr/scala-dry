@@ -66,27 +66,22 @@ object SuperTests extends TestSuite {
       b.foo(0.0) ==> 2
     }
 
-    // FIXME fails to compile:
-    //  [error]  found   : y.type (with underlying type A)
-    //  [error]  required: A
-    //  [error]         override def foo[A](x: Int, y: A) = superCall // super.foo[A](x, y) works!
-    //  [error]                                             ^
-    //    'typeParams {
-    //      class Foo[A] {
-    //        def foo[B](x: A, y: B) = y
-    //      }
-    //
-    //      class Bar[A] extends Foo[A] {
-    //        override def foo[B](x: A, y: B) = superCall
-    //      }
-    //
-    //      class Baz extends Foo[Int] {
-    //        override def foo[A](x: Int, y: A) = superCall // super.foo[A](x, y) works!
-    //      }
-    //
-    //      (new Bar[Int]).foo(0, 0.0) ==> 0.0
-    //      (new Baz).foo(0, 0.0) ==> 0.0
-    //    }
+    'typeParams {
+      class Foo[A] {
+        def foo[B](x: A, y: B) = y
+      }
+
+      class Bar[A] extends Foo[A] {
+        override def foo[B](x: A, y: B) = superCall
+      }
+
+      class Baz extends Foo[Int] {
+        override def foo[A](x: Int, y: A) = superCall
+      }
+
+      (new Bar[Int]).foo(0, 0.0) ==> 0.0
+      (new Baz).foo(0, 0.0) ==> 0.0
+    }
 
     'multipleParamLists {
       class A {
@@ -99,19 +94,20 @@ object SuperTests extends TestSuite {
 
       implicit val i: Int = 1
       (new B).foo(0)("a") ==> "B: 0a1"
+    }
 
-      'shadowedImplicits {
-        class C extends A {
-          override def foo(x: Int)(y: String)(implicit z: Int) = {
-            // shadows z from parameter list
-            implicit val z: Int = 2
-            s"C: $superCall"
-          }
-        }
-
-        implicit val i: Int = 1
-        (new C).foo(0)("a") ==> "C: 0a1" // not C: 0a2!
-      }
+    'shadowedImplicits {
+      compileError(
+        """class A {
+             def foo(x: Int, z: Int) = x.toString + z.toString
+           }
+           class C extends A {
+             override def foo(x: Int, z: Int) = {
+               // shadows z from parameter list
+               implicit val z: Int = 2
+               "C: " + superCall
+             }
+           }""")
     }
   }
 }

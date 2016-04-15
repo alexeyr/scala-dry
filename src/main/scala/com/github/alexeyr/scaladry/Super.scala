@@ -6,7 +6,7 @@ import scala.reflect.macros.whitebox
 
 object Super {
   /** When used inside a method definition, resolves to a super call of the same method with the same parameters.
-    * Note that this includes implicit parameters, even if they are shadowed in this scope.
+    * Not allowed when any parameter is shadowed by a local variable or import.
     * To specify which `super` to call, see [[superCallOf]].
     */
   def superCall: Any = macro SuperImpl.superCallOf[Nothing]
@@ -25,7 +25,16 @@ private class SuperImpl(val c: whitebox.Context) {
       case method: MethodSymbol =>
         if (method.overrides.isEmpty)
           c.abort(c.enclosingPosition, s"method ${method.name} overrides nothing, superCall makes no sense")
-        val args = method.paramLists.map(_.map(sym => c.Expr(q"$sym")))
+        val args = method.paramLists.map(_.map { sym =>
+          val name = sym.asTerm.name.toTermName
+          // check that the symbol is not shadowed (comparing positions because == on symbols can produce false
+          // negative in this case)
+          if (sym.pos == c.typecheck(q"$name").symbol.pos)
+            name
+          else {
+            c.abort(c.enclosingPosition, s"superCall is not allowed because parameter $name is shadowed")
+          }
+        })
         val typeOfT = weakTypeOf[T]
         val typeParams = method.typeParams.map(_.asType.name)
         if (typeOfT =:= typeOf[Nothing])

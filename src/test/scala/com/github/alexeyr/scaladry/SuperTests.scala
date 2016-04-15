@@ -67,20 +67,32 @@ object SuperTests extends TestSuite {
     }
 
     'typeParams {
-      class Foo[A] {
-        def foo[B](x: A, y: B) = y
+      'simple {
+        class Foo[A] {
+          def foo[B](x: A, y: B) = y
+        }
+
+        class Bar[A] extends Foo[A] {
+          override def foo[B](x: A, y: B) = superCall
+        }
+
+        class Baz extends Foo[Int] {
+          override def foo[A](x: Int, y: A) = superCall
+        }
+
+        (new Bar[Int]).foo(0, 0.0) ==> 0.0
+        (new Baz).foo(0, 0.0) ==> 0.0
       }
 
-      class Bar[A] extends Foo[A] {
-        override def foo[B](x: A, y: B) = superCall
-      }
+      'complex {
+        class Foo {
+          def f[A, B <: List[A]](x: B): B = x
+        }
 
-      class Baz extends Foo[Int] {
-        override def foo[A](x: Int, y: A) = superCall
+        class Bar extends Foo {
+          override def f[A, B <: List[A]](x: B) = superCall
+        }
       }
-
-      (new Bar[Int]).foo(0, 0.0) ==> 0.0
-      (new Baz).foo(0, 0.0) ==> 0.0
     }
 
     'multipleParamLists {
